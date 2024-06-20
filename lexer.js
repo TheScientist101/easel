@@ -1,4 +1,4 @@
-import { EaselError } from "./stdlib";
+import { EaselError } from "./stdlib.js";
 
 export const TOKENS = {
     LeftParen: 'LeftParen',
@@ -27,6 +27,7 @@ export const TOKENS = {
     Minus: 'Minus',
     Asterisk: 'Asterisk',
     Slash: 'Slash',
+    Boolean: 'Boolean',
     EOF: 'EOF'
 }
 
@@ -108,6 +109,8 @@ export class Lexer {
 
     scanToken() {
         const isNumber = char => char >= '0' && char <= '9';
+        const isChar = char => (char >= 'A' && char <= 'Z') || (char >= 'a' && char <= 'z');
+        const isAlphanumeric = char => isNumber(char) || isChar(char);
 
         const char = this.advance()
 
@@ -163,17 +166,39 @@ export class Lexer {
             return this.tokens.push(
                 new Token(TOKENS.Not, '!', '!', this.line, this.column)
             );
-        } else {
-            if (isNumber(char)) {
-                let number = [char]
-                while (isNumber(this.peek()) || (this.peek() === '.' && !number.includes('.')))
-                    number.push(this.advance());
-                number = number.join('')
+        } else if (isNumber(char)) {
+            let number = [char]
+            while (isNumber(this.peek()) || (this.peek() === '.' && !number.includes('.')))
+                number.push(this.advance());
+            number = number.join('')
+            return this.tokens.push(
+                new Token(TOKENS.Number, number, Number(number), this.line, this.column)
+            );
+        } else if (isChar(char)) {
+            let identifier = [char];
+            while (isAlphanumeric(this.peek())) identifier.push(this.advance());
+            identifier = identifier.join('')
+            if (Object.keys(KEYWORDS).includes(identifier))
                 return this.tokens.push(
-                    new Token(TOKENS.Number, number, Number(number), this.line, this.column)
-                )
-            }
-        }
+                    new Token(TOKENS.Keyword, identifier, KEYWORDS[identifier], this.line, this.column)
+                );
+            else if (identifier === 'true' || identifier === 'false')
+                return this.tokens.push(
+                    new Token(TOKENS.Boolean, identifier, identifier === 'true', this.line, this.column)
+                );
+            return this.tokens.push(
+                new Token(TOKENS.Identifier, identifier, identifier, this.line, this.column)
+            );
+        } else if (char === '~') {
+            while (this.peek() !== '\n' && this.peek() !== '\0') this.advance()
+            return
+        } else if (' \r'.includes(char)) {
+            return
+        } else if (char === '\n') {
+            this.line++;
+            this.column = 0;
+            return;
+        } else this.error('Unexpected symbol: ' + char)
     }
 
     scanTokens() {
