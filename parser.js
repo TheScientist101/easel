@@ -39,6 +39,30 @@ export class Parser {
         this.current = 0;
     }
 
+    call() {
+        let expr = this.simple();
+        while (true) {
+            if (this.peekType() === TOKENS.LeftParen) {
+                this.eat(TOKENS.LeftParen);
+                let args = [];
+                if (this.peekType() !== TOKENS.RightParen) args = this.exprList();
+                this.eat(TOKENS.RightParen);
+                expr = new Ast.Call(expr, args);
+            } else if (this.peekType() === TOKENS.LeftBrace) {
+                this.eat(TOKENS.LeftBracket);
+                const property = this.expr();
+                this.eat(TOKENS.RightBracket);
+                expr = new Ast.Get(expr, property, true);
+            } else if (this.peekType() === TOKENS.Period) {
+                this.eat(TOKENS.Period);
+                const property = this.eat(TOKENS.Identifier).value;
+                expr = new Ast.Get(expr, property);
+            } else break;
+        }
+
+        return expr;
+    }
+
     error(token, msg) {
         throw new EaselError(`Syntax error on ${token.line}:${token.column} ${msg}`)
     }
@@ -49,7 +73,7 @@ export class Parser {
     }
 
     peekType() {
-        return this.peek().type;
+        return this.peek() == null ? null : this.peek().type;
     }
 
     peekKeyword(keyword) {
@@ -101,12 +125,38 @@ export class Parser {
                 this.eat(TOKENS.RightParen);
                 return expr;
             }
+            case TOKENS.Keyword: {
+                if (token.value === 'prep') {
+                    const id = this.eat(TOKENS.Identifier).value;
+                    this.eat(TOKENS.LeftParen);
+                    let members = {};
+                    while (this.peekType() !== TOKENS.RightParen) {
+                        const member = this.eat(TOKENS.Identifier).value;
+                        this.eat(TOKENS.Colon);
+                        members[member] = this.expr();
+                        if (this.peekType() === TOKENS.Comma) this.eat(TOKENS.Comma);
+                    }
+                    this.eat(TOKENS.RightParen);
+
+                    return new Ast.Instance(id, members);
+                }
+                break;
+            }
         }
         this.error(token, "Expected expression but got " + token);
     }
 
+    unary() {
+        if (this.peekType() === TOKENS.Not) {
+            const op = this.eat(this.peekType()).value;
+            return new Ast.Unary(op, this.unary());
+        }
+
+        return this.call();
+    }
+
     expr() {
-        const left = this.simple();
+        const left = this.unary();
         if (isOp(this.peekType())) {
             const op = this.eat(this.peekType()).value;
             const right = this.expr();
@@ -124,7 +174,7 @@ export class Parser {
     exprList() {
         let exprs = [];
         exprs.push(this.expr());
-        while (this.peekType === TOKENS.Comma) {
+        while (this.peekType() === TOKENS.Comma) {
             this.eat(TOKENS.Comma);
             exprs.push(this.expr());
         }
@@ -223,6 +273,33 @@ export class Parser {
             return new Ast.Conditional(condition, body, otherwise);
         }
 
+        const assignmentStmt = () => {
+            this.eatKeyword('prepare');
+            const name = this.eat(TOKENS.Identifier).value;
+            
+            if (this.peekType() === TOKENS.Period) {
+                this.eat(TOKENS.Period);
+                const property = this.eat(TOKENS.Identifier).value;
+                this.eatKeyword('as');
+                const value = this.expr();
+                return new Ast.Set(name, property, value);
+            }
+
+            this.eatKeyword('as');
+            const value = this.expr();
+            return new Ast.Var(name, value);
+        }
+
+        const structStmt = () => {
+            this.eatKeyword('brush');
+            const name = this.eat(TOKENS.Identifier).value;
+            this.eatKeyword('has');
+            this.eat(TOKENS.LeftBrace);
+            const members = this.identifierList();
+            this.eat(TOKENS.RightBrace);
+            return new Ast.Struct(name, members);
+        }
+
         const next = this.peek();
         switch (next.type) {
             case TOKENS.Keyword: {
@@ -237,6 +314,10 @@ export class Parser {
                         return whileStmt();
                     case 'if':
                         return conditionalStmt('if');
+                    case 'prepare':
+                        return assignmentStmt();
+                    case 'brush':
+                        return structStmt();
                 }
             }
             default: {

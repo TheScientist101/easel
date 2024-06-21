@@ -71,14 +71,69 @@ export class Conditional {
     }
 }
 
+export class Set {
+    constructor(name, property, value) {
+        this.type = 'Set';
+        this.name = name;
+        this.property = property;
+        this.value = value;
+    }
+}
+
+export class Struct {
+    constructor(name, members) {
+        this.type = 'Struct';
+        this.name = name;
+        this.members = members;
+    }
+}
+
+export class Instance {
+    constructor(id, members) {
+        this.type = 'Instance';
+        this.id = id;
+        this.members = members;
+    }
+}
+
+export class Call {
+    constructor(caller, args) {
+        this.type = 'Call';
+        this.caller = caller;
+        this.args = args;
+    }
+}
+
+export class Get {
+    constructor(caller, property, isExpr) {
+        this.type = 'Get';
+        this.caller = caller;
+        this.property = property;
+        this.isExpr = isExpr;
+    }
+}
+
+export class Unary {
+    constructor(operator, apply) {
+        this.type = 'Unary';
+        this.operator = operator;
+        this.apply = apply;
+    }
+}
+
 export default {
     Array,
     Binary,
+    Call,
     Conditional,
     For,
     Func,
+    Get,
+    Instance,
     Literal,
     Return,
+    Set,
+    Struct,
     Var,
     While
 }
