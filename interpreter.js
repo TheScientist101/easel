@@ -134,7 +134,7 @@ export class Interpreter {
                 break;
             case Ast.For:
                 let localScope = { ...scope, [node.id]: this.evaluate(node.range[0])};
-                while (localScope[node.id] < this.error.evaluate(node.range[i], scope)) {
+                while (localScope[node.id] < this.evaluate(node.range[1], scope)) {
                     this.run(node.body, localScope);
                     localScope[node.id]++;
                 }

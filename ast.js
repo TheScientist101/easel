@@ -89,9 +89,9 @@ export class Struct {
 }
 
 export class Instance {
-    constructor(id, members) {
+    constructor(name, members) {
         this.type = 'Instance';
-        this.id = id;
+        this.name = name;
         this.members = members;
     }
 }
