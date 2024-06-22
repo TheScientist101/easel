@@ -1,5 +1,6 @@
 import fs from 'fs';
-import { EaselError } from './stdlib.js';
+import { Interpreter } from './interpreter.js';
+import stdlib, { EaselError } from './stdlib.js';
 import { Lexer } from './lexer.js';
 import { Parser } from './parser.js';
 
@@ -39,6 +40,13 @@ const writeFile = (location, data) => new Promise((resolve, reject) => fs.writeF
             console.log(err);
         } finally {
             if (debug) await writeFile('ast.json', JSON.stringify(parser.ast, null, 2));
+        }
+
+        const interpreter = new Interpreter();
+        try {
+            interpreter.run(parser.ast, stdlib);
+        } catch (err) {
+            console.log(err);
         }
     } else {
 

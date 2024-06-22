@@ -134,6 +134,7 @@ export default {
     Return,
     Set,
     Struct,
+    Unary,
     Var,
     While
 }
